@@ -1,0 +1,141 @@
+# 지표 사전 (초안) — 자유롭게 수정하세요.
+# 수정 후 앱을 새로고침하면 서비스 DB와 AI 프롬프트에 바로 반영됩니다.
+#   key        : 영문 고유 ID (AI·화면이 같은 이름으로 참조)
+#   name       : 화면에 보이는 이름
+#   group      : 묶음 (매출 / 상품 / 마케팅 / 고객)
+#   definition : 비즈니스 정의 (사람이 읽는 설명)
+#   formula    : SQL 계산식 (source 테이블 기준)
+#   source     : 계산에 쓰는 테이블
+#   direction  : up = 높을수록 좋음, down = 낮을수록 좋음
+#   alert_pct  : 대시보드에서 전주 대비 이 % 이상 나빠지면 특이사항으로 표시 (비우면 감지 안 함)
+#   format     : krw | int | pct | ratio
+
+- key: net_revenue
+  name: 순매출
+  group: 매출
+  definition: 할인 차감 후 결제 매출 (반품 미차감)
+  formula: SUM(net_revenue)
+  source: g1_fact_sales_daily
+  direction: up
+  alert_pct: 10
+  format: krw
+
+- key: orders
+  name: 주문수
+  group: 매출
+  definition: 고유 주문 건수
+  formula: SUM(orders)
+  source: g1_fact_sales_daily
+  direction: up
+  alert_pct: 10
+  format: int
+
+- key: aov
+  name: 객단가
+  group: 매출
+  definition: 순매출 / 주문수
+  formula: SUM(net_revenue) * 1.0 / NULLIF(SUM(orders), 0)
+  source: g1_fact_sales_daily
+  direction: up
+  alert_pct: 8
+  format: krw
+
+- key: discount_rate
+  name: 할인율
+  group: 매출
+  definition: 할인액 / 정가 매출
+  formula: SUM(discount_amount) * 1.0 / NULLIF(SUM(gross_revenue), 0)
+  source: g1_fact_sales_daily
+  direction: down
+  alert_pct:
+  format: pct
+
+- key: gross_margin
+  name: 매출총이익률
+  group: 매출
+  definition: (순매출 - 원가) / 순매출
+  formula: SUM(gross_profit) * 1.0 / NULLIF(SUM(net_revenue), 0)
+  source: g1_fact_sales_daily
+  direction: up
+  alert_pct: 5
+  format: pct
+
+- key: return_rate
+  name: 반품률
+  group: 상품
+  definition: 반품 수량 / 판매 수량
+  formula: SUM(return_units) * 1.0 / NULLIF(SUM(units), 0)
+  source: g1_fact_sales_daily
+  direction: down
+  alert_pct: 30
+  format: pct
+
+- key: new_order_share
+  name: 신규 주문 비중
+  group: 고객
+  definition: 첫 구매 주문 / 전체 주문
+  formula: SUM(new_customer_orders) * 1.0 / NULLIF(SUM(orders), 0)
+  source: g1_fact_sales_daily
+  direction: up
+  alert_pct:
+  format: pct
+
+- key: m1_retention
+  name: M+1 재구매율
+  group: 고객
+  definition: 첫 구매 다음 달에도 구매한 고객 비율 (코호트 기준)
+  formula: SUM(CASE WHEN months_since_first = 1 THEN active_customers END) * 1.0 / NULLIF(SUM(CASE WHEN months_since_first = 0 THEN active_customers END), 0)
+  source: g1_fact_customer_cohort
+  direction: up
+  alert_pct: 20
+  format: pct
+
+- key: spend
+  name: 광고비
+  group: 마케팅
+  definition: 매체 집행 광고비
+  formula: SUM(spend)
+  source: g1_fact_marketing_daily
+  direction: down
+  alert_pct:
+  format: krw
+
+- key: roas
+  name: ROAS
+  group: 마케팅
+  definition: 광고 기여 매출 / 광고비 (라스트클릭 기준)
+  formula: SUM(attributed_revenue) * 1.0 / NULLIF(SUM(spend), 0)
+  source: g1_fact_marketing_daily
+  direction: up
+  alert_pct: 15
+  format: ratio
+
+- key: ctr
+  name: CTR
+  group: 마케팅
+  definition: 클릭 / 노출
+  formula: SUM(clicks) * 1.0 / NULLIF(SUM(impressions), 0)
+  source: g1_fact_marketing_daily
+  direction: up
+  alert_pct: 20
+  format: pct
+
+- key: cvr
+  name: 전환율
+  group: 마케팅
+  definition: 전환(주문) / 세션
+  formula: SUM(conversions) * 1.0 / NULLIF(SUM(sessions), 0)
+  source: g1_fact_marketing_daily
+  direction: up
+  alert_pct: 15
+  format: pct
+
+- key: cpa
+  name: CPA
+  group: 마케팅
+  definition: 광고비 / 전환
+  formula: SUM(spend) * 1.0 / NULLIF(SUM(conversions), 0)
+  source: g1_fact_marketing_daily
+  direction: down
+  alert_pct: 20
+  format: krw

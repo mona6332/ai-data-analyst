@@ -1,0 +1,50 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "분석 허브 화면(Streamlit)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "streamlit",
+      "args": [
+        "run",
+        "app.py"
+      ],
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env"
+    },
+    {
+      "name": "임시 DB 생성",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "scripts/build_mock_db.py",
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "분석 실행 (광고 효율 아젠다)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "analyst.cli",
+      "args": [
+        "광고비는 늘었는데 ROAS가 떨어졌다",
+        "--agenda",
+        "ad_efficiency",
+        "--show-sql"
+      ],
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env"
+    },
+    {
+      "name": "API 서버",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "uvicorn",
+      "args": [
+        "analyst.api:app",
+        "--reload"
+      ],
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env"
+    }
+  ]
+}

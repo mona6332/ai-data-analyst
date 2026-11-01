@@ -1,0 +1,71 @@
+# 아젠다 (초안) — 문제 상황별로 정해 둔 분석 순서. 자유롭게 수정하세요.
+#   id        : 영문 고유 ID
+#   title     : 화면 제목
+#   question  : 이 아젠다가 답하려는 질문
+#   metrics   : 중심 지표 (metrics.yaml 의 key)
+#   steps     : 분석 순서. name = 단계 이름, guide = AI에게 주는 구체적 지침
+#   starters  : '문제 상황으로 시작' 버튼에 보일 예시 문장
+
+- id: weekly_sales
+  title: 주간 매출 점검
+  question: 이번 주 매출이 어디서 늘고 줄었는지
+  metrics: [net_revenue, orders, aov, discount_rate]
+  steps:
+    - name: 매출 분해
+      guide: 최근 7일 vs 직전 7일 순매출을 주문수 × 객단가로 분해하고, 카테고리별 증감 기여도를 계산한다.
+    - name: 상품 성과
+      guide: 증감 기여가 큰 상품 상위/하위 5개를 찾고 판매수량·반품을 함께 본다.
+    - name: 매체·캠페인 성과
+      guide: 채널별 매출 증감과 광고비·ROAS 변화를 비교해 매출 변화가 유입 때문인지 확인한다.
+  starters:
+    - 이번 주 매출이 지난주보다 줄었다
+
+- id: ad_efficiency
+  title: 광고 효율 점검
+  question: 광고비가 어디서 효율을 내고 있는지
+  metrics: [spend, roas, ctr, cvr, cpa]
+  steps:
+    - name: 매체·캠페인 성과
+      guide: 최근 3주 vs 직전 3주 채널·캠페인별 광고비, ROAS, CTR, CVR, CPA 변화를 비교한다.
+    - name: 매체 × 상품
+      guide: 효율이 떨어진 채널에서 어떤 카테고리/상품이 팔렸는지, 매출 구성이 바뀌었는지 본다.
+    - name: 고객 퀄리티
+      guide: 해당 채널 유입 주문의 신규 비중과 객단가를 비교한다.
+  starters:
+    - 광고비는 늘었는데 ROAS가 떨어졌다
+
+- id: retention
+  title: 고객 유지 점검
+  question: 누가 다시 사고 누가 이탈하는지
+  metrics: [m1_retention, new_order_share]
+  steps:
+    - name: 고객 퀄리티
+      guide: 첫 구매 월(코호트)별 M+1 재구매율 추이를 보고, 가입 채널·연령대별 차이를 gold_customers 로 비교한다.
+    - name: 매출 분해
+      guide: 신규/기존 고객 매출 비중 변화를 확인하고 재구매 하락이 매출에 미친 영향을 추정한다.
+  starters:
+    - 신규 고객은 느는데 재구매가 약하다
+
+- id: promo_review
+  title: 프로모션 사후 분석
+  question: 행사가 무엇을 남겼는지
+  metrics: [net_revenue, discount_rate, gross_margin, new_order_share]
+  steps:
+    - name: 프로모션 비교
+      guide: domain_promotion_calendar 기준 행사 기간 / 행사 전 동일 기간 / 행사 후 동일 기간의 일평균 매출·할인율·이익률을 비교한다.
+    - name: 고객 퀄리티
+      guide: 행사 기간 신규 고객 비중과, 행사로 유입된 고객의 이후 재구매 여부를 확인한다.
+  starters:
+    - 프로모션 효과가 오래가지 않는다
+
+- id: product_issue
+  title: 상품 이슈 점검
+  question: 특정 상품의 판매·반품 문제
+  metrics: [return_rate, net_revenue]
+  steps:
+    - name: 상품 성과
+      guide: 최근 4주 반품률이 급등한 상품을 찾고 월별 판매·반품 추이를 본다.
+    - name: 매체 × 상품
+      guide: 문제 상품의 반품이 특정 채널/캠페인 유입 주문에 몰려 있는지 확인한다.
+  starters:
+    - 특정 상품 반품이 늘었다
