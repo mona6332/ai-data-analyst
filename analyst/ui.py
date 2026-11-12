@@ -7,6 +7,7 @@ import streamlit as st
 
 from .config import settings
 from .connectors import get_connector
+from .judge import load_judge_config
 from .service_db import ServiceDB
 
 
@@ -51,8 +52,30 @@ def render_chart(spec: dict):
     st.altair_chart(mark.encode(**enc).properties(title=spec["title"], height=280), width="stretch")
 
 
-def render_report(report_md: str, charts: list | None = None, sql_log: list | None = None, key: str = ""):
+def render_judge(judge: dict | None):
+    """리포트 품질 판정 결과 (config/judge.yaml 기준)."""
+    if not judge:
+        return
+    if judge.get("passed") is None:
+        st.caption(f'품질 판정: 실행되지 않음 ({judge.get("error", "")[:100]})')
+        return
+    badge = "✅ 통과" if judge["passed"] else "⚠️ 기준 미달"
+    rev = f' · 재작성 {judge.get("revision", 0)}회' if judge.get("revision") else ""
+    with st.expander(f'품질 판정 {judge["overall"]}점 / 5 · {badge}{rev}'):
+        names = {c["key"]: c["name"] for c in load_judge_config()["criteria"]}
+        st.table(pd.DataFrame([{"기준": names.get(s["key"], s["key"]), "점수": s["score"], "근거": s.get("reason", "")}
+                               for s in judge.get("scores", [])]))
+        for i in judge.get("issues", []):
+            st.markdown(f"- {i}")
+        unv = (judge.get("number_check") or {}).get("unverified")
+        if unv:
+            st.caption("조회 결과에서 확인되지 않은 숫자: " + ", ".join(unv))
+
+
+def render_report(report_md: str, charts: list | None = None, sql_log: list | None = None, key: str = "",
+                  judge: dict | None = None):
     st.markdown(report_md)
+    render_judge(judge)
     for c in charts or []:
         render_chart(c)
     if sql_log:

@@ -24,4 +24,4 @@ for r in reports:
     title = (r["report_md"] or "").splitlines()[0].lstrip("# ") if r["report_md"] else r["question"]
     with st.expander(f'{r["created_at"]} · {agendas.get(r["agenda_id"], {}).get("title", "")} · {title}'):
         full = sdb.report(r["report_id"])
-        render_report(full["report_md"], full["charts"], full["sql_log"], key=r["report_id"])
+        render_report(full["report_md"], full["charts"], full["sql_log"], key=r["report_id"], judge=full.get("judge"))

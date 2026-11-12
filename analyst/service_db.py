@@ -34,6 +34,9 @@ class ServiceDB:
               report_id TEXT PRIMARY KEY, created_at TEXT, kind TEXT, agenda_id TEXT, question TEXT,
               report_md TEXT, sql_log_json TEXT, charts_json TEXT, status TEXT);
             """)
+            cols = {r[1] for r in con.execute("PRAGMA table_info(analysis_reports)")}
+            if "judge_json" not in cols:  # 기존 서비스 DB 마이그레이션
+                con.execute("ALTER TABLE analysis_reports ADD COLUMN judge_json TEXT")
 
     def sync_definitions(self):
         metrics, agendas = load_metrics(), load_agendas()
@@ -63,14 +66,23 @@ class ServiceDB:
 
     # ---------- 리포트
     def save_report(self, question: str, agenda_id: str | None, report_md: str, sql_log: list,
-                    charts: list | None = None, kind: str = "explore", status: str = "done") -> str:
+                    charts: list | None = None, kind: str = "explore", status: str = "done",
+                    judge: dict | None = None) -> str:
         rid = uuid.uuid4().hex[:12]
         with self._con() as con:
-            con.execute("INSERT INTO analysis_reports VALUES (?,?,?,?,?,?,?,?,?)",
+            con.execute("INSERT INTO analysis_reports (report_id, created_at, kind, agenda_id, question, report_md, "
+                        "sql_log_json, charts_json, status, judge_json) VALUES (?,?,?,?,?,?,?,?,?,?)",
                         (rid, datetime.now().isoformat(timespec="seconds"), kind, agenda_id, question, report_md,
                          json.dumps(sql_log, ensure_ascii=False, default=str),
-                         json.dumps(charts or [], ensure_ascii=False, default=str), status))
+                         json.dumps(charts or [], ensure_ascii=False, default=str), status,
+                         json.dumps(judge, ensure_ascii=False, default=str) if judge else None))
         return rid
+
+    def save_judge(self, report_id: str, judge: dict) -> None:
+        """저장된 리포트에 판정 결과를 기록 (scripts/judge_reports.py 재채점용)."""
+        with self._con() as con:
+            con.execute("UPDATE analysis_reports SET judge_json = ? WHERE report_id = ?",
+                        (json.dumps(judge, ensure_ascii=False, default=str), report_id))
 
     def reports(self, limit: int = 50, kind: str | None = None) -> list[dict]:
         q = "SELECT report_id, created_at, kind, agenda_id, question, report_md FROM analysis_reports"
@@ -89,6 +101,7 @@ class ServiceDB:
         d = dict(r)
         d["sql_log"] = json.loads(d.pop("sql_log_json") or "[]")
         d["charts"] = json.loads(d.pop("charts_json") or "[]")
+        d["judge"] = json.loads(d.pop("judge_json") or "null")
         return d
 
     def delete_report(self, report_id: str) -> None:

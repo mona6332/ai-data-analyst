@@ -23,6 +23,9 @@ class Settings:
     # LLM
     llm_provider: str = os.getenv("LLM_PROVIDER", "openai")  # openai | anthropic
     llm_model: str = os.getenv("LLM_MODEL", "gpt-5")
+    # 리포트 품질 판정(LLM judge). 기준·통과 점수는 config/judge.yaml
+    judge_enabled: bool = os.getenv("JUDGE_ENABLED", "true").lower() in ("1", "true", "yes")
+    judge_model: str = os.getenv("JUDGE_MODEL", "")  # 비우면 LLM_MODEL 과 같은 모델
 
 
 settings = Settings()
