@@ -102,5 +102,7 @@ def test_stream_analysis_events_and_result(tmp_path):
     res = stream_analysis("광고비는 늘었는데 ROAS가 떨어졌다", "ad_efficiency", llm=RoleFakeLLM(), cfg=cfg,
                           mode="multi", on_event=events.append)
     assert res["mode"] == "multi" and res["agents"] == ["정형 분석", "자율 탐색"] and res["report_id"]
+    assert set(res["memos"]) == {"structured", "explorer"}   # 병렬 에이전트 메모가 덮어써지지 않음
+    assert res["steps"] == 4                                  # 두 에이전트 턴 수 합계 (각 2턴)
     assert events[0].startswith("실행 모드: 멀티 에이전트")
     assert any("평가 에이전트: 4.0점 · 통과" in e for e in events)

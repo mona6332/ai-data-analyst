@@ -281,7 +281,8 @@ def stream_analysis(question: str, agenda_id: str | None = None, previous_report
         try:
             for update in graph.stream(inputs, {"recursion_limit": limit}, stream_mode="updates"):
                 for node, out in update.items():
-                    final.update(out or {})
+                    for k, v in (out or {}).items():  # memos·agent_steps 는 병렬 에이전트 결과를 합침 (덮어쓰기 X)
+                        final[k] = _merge(final.get(k), v) if k in ("memos", "agent_steps") else v
                     if node == "write_report":
                         events.put(("event", "리포트 작성 에이전트: 작성 완료"))
                     elif node == "judge":
