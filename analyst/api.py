@@ -20,6 +20,7 @@ app = FastAPI(title="AI Data Analyst Agent", version="0.1.0")
 class AnalyzeRequest(BaseModel):
     question: str = ""
     agenda_id: str | None = None
+    mode: str | None = None  # auto | single | multi
 
 
 @app.get("/agendas")
@@ -34,7 +35,7 @@ def metrics():
 
 @app.post("/analyze")
 def analyze(req: AnalyzeRequest):
-    return run_analysis(req.question, req.agenda_id)
+    return run_analysis(req.question, req.agenda_id, mode=req.mode)
 
 
 @app.get("/reports")

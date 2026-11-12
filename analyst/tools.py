@@ -85,12 +85,16 @@ def build_tools(conn: BaseConnector, sdb: ServiceDB, cfg: Settings, ws: Workspac
         return f"[{name}] {len(res.df)} rows{note}\n{_preview(res.df)}"
 
     @tool
-    def python_analysis(code: str) -> str:
+    def python_analysis(code: str, purpose: str = "") -> str:
         """pandas/numpy로 추가 분석을 수행합니다. run_sql 결과는 r1, r2... 변수로 사용할 수 있습니다.
         import 없이 pd, np 를 바로 쓰고, 결과는 print()로 출력하세요. 예: print(r1.pct_change().tail())
+
+        Args:
+            code: 실행할 Python 코드
+            purpose: 이 분석으로 확인하려는 것 (한 줄, 예: '주차별 매출 증감률')
         """
         out = run_python(code, ws.frames)
-        ws.python_log.append({"code": code, "output": out[:2000]})
+        ws.python_log.append({"code": code, "output": out[:2000], "purpose": purpose})
         return out
 
     @tool

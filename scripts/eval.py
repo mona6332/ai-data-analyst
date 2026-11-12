@@ -3,6 +3,7 @@
   python scripts/eval.py                          # 전체 질문
   python scripts/eval.py --only ad_roas_drop      # 일부만 (쉼표로 여러 개)
   python scripts/eval.py --baseline eval/results/20261112-130000.json   # 이전 결과와 비교
+  python scripts/eval.py --mode single    # 단일 에이전트로 평가 (멀티와 점수 비교용)
 
 통과 기준(eval/questions.yaml 의 thresholds)을 못 넘으면 종료 코드 1 → 배포·머지 차단에 사용.
 결과는 eval/results/<시각>.json, .md 로 저장됩니다. 평가 리포트는 분석 아카이브(서비스 DB)에 섞이지 않게
@@ -32,6 +33,8 @@ def main() -> int:
     ap.add_argument("--only", default="", help="실행할 질문 id (쉼표 구분)")
     ap.add_argument("--baseline", default=None, help="비교할 이전 결과 json")
     ap.add_argument("--questions", default=None, help="질문 세트 yaml (기본 eval/questions.yaml)")
+    ap.add_argument("--mode", default=None, choices=["auto", "single", "multi"],
+                    help="에이전트 모드 (기본: config/agents.yaml routing.eval). 질문별 mode 가 있으면 그것이 우선")
     a = ap.parse_args()
 
     cases, thresholds = load_cases(Path(a.questions) if a.questions else None)
@@ -47,11 +50,14 @@ def main() -> int:
 
     tmp = tempfile.mkdtemp(prefix="eval_")
     cfg = replace(settings, service_db_path=str(Path(tmp) / "service.db"))
-    meta = {"모델": cfg.llm_model, "판사": cfg.judge_model or cfg.llm_model, "질문": len(cases)}
+    from analyst.graph import resolve_mode
+    mode = resolve_mode(a.mode or "auto", "eval")
+    meta = {"모델": cfg.llm_model, "판사": cfg.judge_model or cfg.llm_model, "모드": mode, "질문": len(cases)}
     print(f"평가 시작 · {meta}")
 
     def run(case):
-        return stream_analysis(case["question"], case.get("agenda"), kind="eval", cfg=cfg)
+        return stream_analysis(case["question"], case.get("agenda"), kind="eval", cfg=cfg,
+                               mode=case.get("mode") or mode)
 
     def on_case(r):
         mark = "실패" if r.get("error") or r.get("judge_error") else f'{r["first_score"]} → {r["final_score"]}점'

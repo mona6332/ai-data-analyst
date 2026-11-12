@@ -20,6 +20,8 @@ class Settings:
     )
     max_rows: int = int(os.getenv("SQL_MAX_ROWS", "500"))
     max_agent_steps: int = int(os.getenv("MAX_AGENT_STEPS", "12"))
+    # 실행 모드: auto(목적별 자동) | single(분석 에이전트 1개) | multi(정형·탐색 동시 실행). 설정은 config/agents.yaml
+    agent_mode: str = os.getenv("AGENT_MODE", "auto")
     # LLM
     llm_provider: str = os.getenv("LLM_PROVIDER", "openai")  # openai | anthropic
     llm_model: str = os.getenv("LLM_MODEL", "gpt-5")

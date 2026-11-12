@@ -56,3 +56,20 @@ def validate_metrics(items: list[dict]) -> list[str]:
         if m.get("direction") not in ("up", "down"):
             errs.append(f"{m.get('key')}: direction 은 up 또는 down 이어야 합니다.")
     return errs
+
+
+def load_agents() -> dict:
+    """멀티 에이전트 설정(config/agents.yaml). 없으면 빈 설정."""
+    p = CONFIG_DIR / "agents.yaml"
+    data = (yaml.safe_load(p.read_text(encoding="utf-8")) or {}) if p.exists() else {}
+    agents = []
+    for a in data.get("agents", []):
+        a.setdefault("name", a["id"])
+        a.setdefault("enabled", True)
+        a.setdefault("use_agenda", False)
+        a.setdefault("instructions", "")
+        a.setdefault("prefix", a["id"][0].upper() + "_")
+        agents.append(a)
+    writer = {"name": "리포트 작성", "instructions": "", **(data.get("writer") or {})}
+    routing = {"auto_report": "single", "explore": "multi", "eval": "multi", **(data.get("routing") or {})}
+    return {"agents": agents, "writer": writer, "routing": routing}

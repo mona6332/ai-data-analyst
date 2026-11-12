@@ -26,6 +26,11 @@ with left:
         for sidx, text in enumerate(a.get("starters", [])):
             if st.button(text, key=f'st_{a["id"]}_{sidx}', width="stretch"):
                 request = (text, a["id"], False)
+    st.markdown("**분석 방식**")
+    mode = st.radio("분석 방식", ["auto", "single", "multi"], horizontal=True, label_visibility="collapsed",
+                    format_func={"auto": "자동", "single": "단일", "multi": "멀티"}.get,
+                    help="자동: 자연어 질문은 정형+탐색 멀티 에이전트로 실행 (config/agents.yaml 의 routing). "
+                         "단일: 분석 에이전트 1개. 멀티: 정형·탐색 에이전트를 동시에 실행한 뒤 리포트 작성·평가 에이전트가 이어받음.")
     if st.session_state.chat and st.button("새 대화", type="secondary", width="stretch"):
         st.session_state.chat = []
         st.rerun()
@@ -58,7 +63,7 @@ with right:
         with st.chat_message("user"):
             st.markdown(question)
         with st.chat_message("assistant"):
-            res = run_with_status(question, agenda_id, previous_report=prev)
+            res = run_with_status(question, agenda_id, previous_report=prev, mode=mode)
             if res:
                 render_report(res["report_md"], res["charts"], res["sql_log"], key=res["report_id"],
                               judge=res.get("judge"))

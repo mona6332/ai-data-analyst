@@ -81,7 +81,7 @@ def render_report(report_md: str, charts: list | None = None, sql_log: list | No
     if sql_log:
         with st.expander(f"실행한 쿼리 {len(sql_log)}개"):
             for s in sql_log:
-                st.caption(f'[{s.get("name", "오류")}] {s["purpose"]}')
+                st.caption(f'{"[" + s["agent"] + "] " if s.get("agent") else ""}[{s.get("name", "오류")}] {s["purpose"]}')
                 st.code(s["sql"], language="sql")
                 if "error" in s:
                     st.error(s["error"])
@@ -91,13 +91,14 @@ def render_report(report_md: str, charts: list | None = None, sql_log: list | No
 
 
 def run_with_status(question: str, agenda_id: str | None, previous_report: str | None = None,
-                    kind: str = "explore") -> dict | None:
+                    kind: str = "explore", mode: str | None = None) -> dict | None:
     from .graph import stream_analysis
     try:
         with st.status("분석 중...", expanded=True) as status:
-            res = stream_analysis(question, agenda_id, previous_report=previous_report, kind=kind,
+            res = stream_analysis(question, agenda_id, previous_report=previous_report, kind=kind, mode=mode,
                                   on_event=lambda t: st.write("· " + t))
-            status.update(label=f'분석 완료 (쿼리 {len(res["sql_log"])}개, 차트 {len(res["charts"])}개)',
+            agents = " + ".join(res.get("agents") or [])
+            status.update(label=f'분석 완료 · {agents} (쿼리 {len(res["sql_log"])}개, 차트 {len(res["charts"])}개)',
                           state="complete", expanded=False)
         return res
     except Exception as e:
