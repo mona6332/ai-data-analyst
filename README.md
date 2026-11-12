@@ -33,6 +33,7 @@
 | SQL 안전장치 | `analyst/sql_guard.py` |
 | **리포트 품질 판정 기준** | `config/judge.yaml` (판정 로직 `analyst/judge.py`, 판사 모델 `.env`의 `JUDGE_MODEL`) |
 | 저장된 리포트 재채점 | `scripts/judge_reports.py` |
+| **배포 전 품질 평가** | 질문 세트 `eval/questions.yaml`, 실행 `scripts/eval.py`, 로직 `analyst/evaluate.py` |
 | 회사 DB 연결 | `analyst/connectors/` |
 | 임시 DB 다시 만들기 | `scripts/build_mock_db.py` |
 | 자동 리포트 예약 실행 | `scripts/run_auto_report.py` |
@@ -60,7 +61,7 @@ python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\act
 pip install -r requirements.txt
 cp .env.example .env        # (Windows: copy .env.example .env) OPENAI_API_KEY 입력 (기본 LLM: OpenAI gpt-5)
 python scripts/build_mock_db.py
-python -m pytest -q         # LLM 없이 도는 테스트 26개
+python -m pytest -q         # LLM 없이 도는 테스트 31개
 
 streamlit run app.py        # 분석 허브 화면 (http://localhost:8501)
 
@@ -79,6 +80,13 @@ VS Code의 실행/디버그 탭에 `분석 허브 화면(Streamlit)`, `임시 DB
 - 판사는 분석과 다른 모델을 쓰는 게 좋습니다: `.env`에 `JUDGE_MODEL=...` (비우면 같은 모델). 끄려면 `JUDGE_ENABLED=false`
 - 프롬프트를 바꾼 뒤 품질 비교: `python scripts/judge_reports.py --limit 20` (저장된 리포트의 SQL을 다시 실행해 근거를 만들고 재채점)
 
+## 배포 전 품질 평가 (평가 세트)
+리포트 1건을 저장 전에 판정하는 것과 별개로, **프롬프트·모델·코드를 바꾼 버전이 전체적으로 나아졌는지**를 배포 전에 측정합니다.
+- 질문 세트와 통과 기준: `eval/questions.yaml` (질문, 아젠다, 리포트에 꼭 나와야 할 핵심 단어, 평균·질문별·기준별 최소 점수)
+- 실행: `python scripts/eval.py` → 질문마다 에이전트 실행 + 판정, 결과를 `eval/results/<시각>.md/.json`에 저장. 기준 미달이면 종료 코드 1
+- 이전 결과와 비교: `python scripts/eval.py --baseline eval/results/<이전>.json`
+- GitHub Actions: `tests`(PR마다 LLM 없는 테스트, 무료), `quality-eval`(수동 실행 또는 PR에 `run-eval` 라벨, LLM 비용 발생). 저장소 Secrets에 `OPENAI_API_KEY`를 직접 등록해야 동작
+
 ## 회사 DW로 바꿀 때
 1. `analyst/connectors/`에 회사 DB용 커넥터 추가 (읽기 전용 계정 필수), `dialect`를 sqlglot 방언명으로 지정
 2. `.env`의 `WAREHOUSE_CONNECTOR`, `WAREHOUSE_DSN`, `ALLOWED_TABLE_PREFIXES`(또는 스키마) 변경
@@ -86,7 +94,6 @@ VS Code의 실행/디버그 탭에 `분석 허브 화면(Streamlit)`, `임시 DB
 
 ## 다음 단계 후보 (v2)
 - 대화형 멀티턴(체크포인터) + 대시보드 특이사항에서 바로 시작
-- 고정 질문 세트로 프롬프트 변경 전후 점수 비교 (평가 세트)
 - Python 실행을 컨테이너 샌드박스로 이전, 사용자별 권한·감사 로그
 - 질문↔검증된 SQL 예시 축적(few-shot)으로 정확도 개선
 

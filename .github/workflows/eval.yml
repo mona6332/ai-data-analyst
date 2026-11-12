@@ -1,0 +1,45 @@
+# 배포 전 품질 평가 (실제 LLM 호출 → 비용 발생). 자동으로 돌지 않고 아래 두 경우에만 실행됩니다.
+#   1) Actions 탭 → quality-eval → Run workflow (수동)
+#   2) PR에 'run-eval' 라벨을 붙였을 때
+# 사전 준비: 저장소 Settings → Secrets and variables → Actions 에 OPENAI_API_KEY 등록 (본인이 직접)
+# 통과 기준(eval/questions.yaml thresholds)을 못 넘으면 실패 → 브랜치 보호 규칙에서 필수 체크로 지정하면 머지 차단
+name: quality-eval
+on:
+  workflow_dispatch:
+    inputs:
+      only:
+        description: "실행할 질문 id (쉼표 구분, 비우면 전체)"
+        required: false
+        default: ""
+  pull_request:
+    types: [labeled, synchronize]
+jobs:
+  eval:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'run-eval')
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      LLM_PROVIDER: openai
+      LLM_MODEL: ${{ vars.LLM_MODEL || 'gpt-5' }}
+      JUDGE_MODEL: ${{ vars.JUDGE_MODEL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: python scripts/build_mock_db.py
+      - name: 품질 평가
+        env:
+          ONLY: ${{ inputs.only }}
+        run: python scripts/eval.py ${ONLY:+--only "$ONLY"}
+      - name: 결과 요약
+        if: always()
+        run: cat eval/results/*.md >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || echo "결과 없음" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eval-results
+          path: eval/results/
