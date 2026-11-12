@@ -38,7 +38,8 @@ with right:
             if h["role"] == "user":
                 st.markdown(h["content"])
             else:
-                render_report(h["content"], h.get("charts"), h.get("sql_log"), key=h.get("report_id", ""))
+                render_report(h["content"], h.get("charts"), h.get("sql_log"), key=h.get("report_id", ""),
+                              judge=h.get("judge"))
 
     prefill = st.session_state.pop("explore_prefill", None)
     if prefill:
@@ -59,6 +60,8 @@ with right:
         with st.chat_message("assistant"):
             res = run_with_status(question, agenda_id, previous_report=prev)
             if res:
-                render_report(res["report_md"], res["charts"], res["sql_log"], key=res["report_id"])
+                render_report(res["report_md"], res["charts"], res["sql_log"], key=res["report_id"],
+                              judge=res.get("judge"))
                 st.session_state.chat.append({"role": "assistant", "content": res["report_md"], "charts": res["charts"],
-                                              "sql_log": res["sql_log"], "report_id": res["report_id"]})
+                                              "sql_log": res["sql_log"], "report_id": res["report_id"],
+                                              "judge": res.get("judge")})

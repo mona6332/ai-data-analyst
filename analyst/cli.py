@@ -34,6 +34,11 @@ def main():
         for s in res["sql_log"]:
             print(f'-- [{s.get("name", "ERR")}] {s["purpose"]}\n{s["sql"]}\n')
     print(res["report_md"])
+    j = res.get("judge")
+    if j and j.get("passed") is not None:
+        print(f'\n[품질 판정] {j["overall"]}점 · {"통과" if j["passed"] else "기준 미달"} · 재작성 {j.get("revision", 0)}회')
+        for sc in j.get("scores", []):
+            print(f'  - {sc["key"]}: {sc["score"]} ({sc.get("reason", "")})')
     print(f'\n(report_id={res["report_id"]}, 단계={res["steps"]}, 쿼리={len(res["sql_log"])}개)')
 
 

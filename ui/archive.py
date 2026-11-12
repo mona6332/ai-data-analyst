@@ -18,7 +18,8 @@ for r in reports:
     with st.expander(f'[{label}] {r["created_at"]} · {title}'):
         st.caption(f'질문: {r["question"]} · 아젠다: {agendas.get(r["agenda_id"], "자유 질문")}')
         full = sdb.report(r["report_id"])
-        render_report(full["report_md"], full["charts"], full["sql_log"], key=r["report_id"])
+        render_report(full["report_md"], full["charts"], full["sql_log"], key=r["report_id"],
+                      judge=full.get("judge"))
         if st.button("삭제", key="del_" + r["report_id"]):
             sdb.delete_report(r["report_id"])
             st.rerun()

@@ -11,7 +11,7 @@
 [DW]  SILVER(silver_*) → GOLD 표준 뷰(gold_*) → G1 팩트·디멘션(g1_*) + 도메인(domain_*)
    ↓  AI는 GOLD·G1·도메인에만 읽기 전용 SQL 실행
 [에이전트 · LangGraph]
-   prepare_context → analyst ⇄ tools → write_report → save_report
+   prepare_context → analyst ⇄ tools → write_report → judge(품질 판정, 미달 시 재작성) → save_report
        │ 스키마·지표사전·아젠다 주입     │ list_tables / describe_table / lookup_metrics
        │                                │ run_sql (읽기 전용) / python_analysis (pandas)
    ↓
@@ -31,6 +31,8 @@
 | 특이사항 감지 규칙 | `analyst/insights.py` (임계치는 metrics.yaml의 `alert_pct`) |
 | 에이전트 흐름 | `analyst/graph.py` (LangGraph), `analyst/tools.py` (도구 6종) |
 | SQL 안전장치 | `analyst/sql_guard.py` |
+| **리포트 품질 판정 기준** | `config/judge.yaml` (판정 로직 `analyst/judge.py`, 판사 모델 `.env`의 `JUDGE_MODEL`) |
+| 저장된 리포트 재채점 | `scripts/judge_reports.py` |
 | 회사 DB 연결 | `analyst/connectors/` |
 | 임시 DB 다시 만들기 | `scripts/build_mock_db.py` |
 | 자동 리포트 예약 실행 | `scripts/run_auto_report.py` |
@@ -58,7 +60,7 @@ python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\act
 pip install -r requirements.txt
 cp .env.example .env        # (Windows: copy .env.example .env) OPENAI_API_KEY 입력 (기본 LLM: OpenAI gpt-5)
 python scripts/build_mock_db.py
-python -m pytest -q         # LLM 없이 도는 테스트 20개
+python -m pytest -q         # LLM 없이 도는 테스트 26개
 
 streamlit run app.py        # 분석 허브 화면 (http://localhost:8501)
 
@@ -69,6 +71,14 @@ uvicorn analyst.api:app --reload    # http://127.0.0.1:8000/docs
 VS Code의 실행/디버그 탭에 `분석 허브 화면(Streamlit)`, `임시 DB 생성`, `분석 실행`, `API 서버` 구성이 들어 있습니다.
 서비스 흐름도와 단계별 인프라 계획은 `docs/service-flow-and-infra.md` 참고.
 
+## 리포트 품질 판정 (LLM judge)
+분석 에이전트와 분리된 판사 LLM이 리포트를 채점합니다. 기준과 통과 점수는 `config/judge.yaml`에서 고칩니다.
+1. **숫자 대조 (코드)**: 리포트 속 숫자가 실제 조회·분석 결과에 있는지 확인 (결과값, %, 증감률, 차이까지 허용)
+2. **LLM 채점**: 근거성 · 지표 정의 준수 · 질문 적합성 · 원인 구분 · 액션 구체성을 1~5점으로 채점, 가중 평균은 코드가 계산
+3. 기준 미달이면 판사 의견을 붙여 리포트를 다시 쓰게 함 (`max_revisions`회까지). 판정 결과는 리포트와 함께 저장되어 탐색 분석·아카이브 화면에 표시
+- 판사는 분석과 다른 모델을 쓰는 게 좋습니다: `.env`에 `JUDGE_MODEL=...` (비우면 같은 모델). 끄려면 `JUDGE_ENABLED=false`
+- 프롬프트를 바꾼 뒤 품질 비교: `python scripts/judge_reports.py --limit 20` (저장된 리포트의 SQL을 다시 실행해 근거를 만들고 재채점)
+
 ## 회사 DW로 바꿀 때
 1. `analyst/connectors/`에 회사 DB용 커넥터 추가 (읽기 전용 계정 필수), `dialect`를 sqlglot 방언명으로 지정
 2. `.env`의 `WAREHOUSE_CONNECTOR`, `WAREHOUSE_DSN`, `ALLOWED_TABLE_PREFIXES`(또는 스키마) 변경
@@ -76,7 +86,7 @@ VS Code의 실행/디버그 탭에 `분석 허브 화면(Streamlit)`, `임시 DB
 
 ## 다음 단계 후보 (v2)
 - 대화형 멀티턴(체크포인터) + 대시보드 특이사항에서 바로 시작
-- 차트 생성 및 리포트 첨부, 리포트 품질 자기검증 노드
+- 고정 질문 세트로 프롬프트 변경 전후 점수 비교 (평가 세트)
 - Python 실행을 컨테이너 샌드박스로 이전, 사용자별 권한·감사 로그
 - 질문↔검증된 SQL 예시 축적(few-shot)으로 정확도 개선
 
