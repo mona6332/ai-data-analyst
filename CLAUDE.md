@@ -10,6 +10,7 @@
 - `app.py` + `ui/*.py`: Streamlit 화면 (대시보드, 자동 리포트, 지표·아젠다 관리, 탐색 분석, 아카이브)
 - `analyst/graph.py`: LangGraph 워크플로우 / `analyst/tools.py`: Tool Calling 도구
 - `analyst/judge.py`: 리포트 품질 판정(LLM judge, 기준은 `config/judge.yaml`) / `scripts/judge_reports.py`: 저장 리포트 재채점
+- `analyst/evaluate.py` + `scripts/eval.py` + `eval/questions.yaml`: 배포 전 품질 평가 (고정 질문 세트, 통과 기준 미달 시 실패)
 - `analyst/insights.py`: 대시보드 KPI·특이사항 감지 (규칙 기반)
 - `analyst/connectors/`: DB 커넥터 (회사 DW 연결 시 여기에 추가)
 - `scripts/build_mock_db.py`: 임시 DB 생성
