@@ -11,7 +11,10 @@
 [DW]  SILVER(silver_*) → GOLD 표준 뷰(gold_*) → G1 팩트·디멘션(g1_*) + 도메인(domain_*)
    ↓  AI는 GOLD·G1·도메인에만 읽기 전용 SQL 실행
 [에이전트 · LangGraph]
-   prepare_context → analyst ⇄ tools → write_report → judge(품질 판정, 미달 시 재작성) → save_report
+   ┌ 정형 분석 에이전트 (지표·아젠다 순서) ┐   ← multi 모드에서 동시 실행 (single 은 분석 에이전트 1개)
+   └ 자율 탐색 에이전트 (자유 가설)       ┘ 각자 analyst ⇄ tools → 분석 메모
+        → 리포트 작성 에이전트 (메모 + 실제 조회 결과만으로 작성, 질문 성격에 맞는 형식)
+        → 평가 에이전트 (LLM judge, 미달 시 작성 에이전트가 재작성) → save_report
        │ 스키마·지표사전·아젠다 주입     │ list_tables / describe_table / lookup_metrics
        │                                │ run_sql (읽기 전용) / python_analysis (pandas)
    ↓
@@ -31,6 +34,7 @@
 | 특이사항 감지 규칙 | `analyst/insights.py` (임계치는 metrics.yaml의 `alert_pct`) |
 | 에이전트 흐름 | `analyst/graph.py` (LangGraph), `analyst/tools.py` (도구 6종) |
 | SQL 안전장치 | `analyst/sql_guard.py` |
+| **멀티 에이전트 설정** | `config/agents.yaml` (에이전트별 역할·지시문·단계 수·사용 여부, 리포트 작성 지시문, 모드 라우팅) |
 | **리포트 품질 판정 기준** | `config/judge.yaml` (판정 로직 `analyst/judge.py`, 판사 모델 `.env`의 `JUDGE_MODEL`) |
 | 저장된 리포트 재채점 | `scripts/judge_reports.py` |
 | **배포 전 품질 평가** | 질문 세트 `eval/questions.yaml`, 실행 `scripts/eval.py`, 로직 `analyst/evaluate.py` |
@@ -61,16 +65,30 @@ python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\act
 pip install -r requirements.txt
 cp .env.example .env        # (Windows: copy .env.example .env) OPENAI_API_KEY 입력 (기본 LLM: OpenAI gpt-5)
 python scripts/build_mock_db.py
-python -m pytest -q         # LLM 없이 도는 테스트 31개
+python -m pytest -q         # LLM 없이 도는 테스트 36개
 
 streamlit run app.py        # 분석 허브 화면 (http://localhost:8501)
 
 python -m analyst.cli --list-agendas
 python -m analyst.cli "광고비는 늘었는데 ROAS가 떨어졌다" --agenda ad_efficiency --show-sql
+python -m analyst.cli "추석 이후 매출이 왜 줄었지?" --mode multi --show-memos   # 멀티 에이전트
 uvicorn analyst.api:app --reload    # http://127.0.0.1:8000/docs
 ```
 VS Code의 실행/디버그 탭에 `분석 허브 화면(Streamlit)`, `임시 DB 생성`, `분석 실행`, `API 서버` 구성이 들어 있습니다.
 서비스 흐름도와 단계별 인프라 계획은 `docs/service-flow-and-infra.md` 참고.
+
+## 멀티 에이전트
+| 에이전트 | 하는 일 | 조정 |
+|---|---|---|
+| 정형 분석 | 지표 사전·아젠다 순서대로 표준 점검 (아젠다 미선택 시 가장 맞는 아젠다를 스스로 고름) | `config/agents.yaml` |
+| 자율 탐색 | 아젠다에 묶이지 않고 세그먼트 교차·반례 등 가설을 세워 탐색 | `config/agents.yaml` |
+| 리포트 작성 | 두 메모와 실제 조회 결과만으로 리포트 작성. 단순 질문은 짧은 답, 원인 질문은 전체 리포트. 공통 결론은 '(교차 확인)' | `config/agents.yaml` 의 `writer` |
+| 평가 | 리포트 채점, 미달 시 작성 에이전트에 재작성 요청 | `config/judge.yaml`, `.env` 의 `JUDGE_MODEL` |
+
+실행 모드 (`.env` 의 `AGENT_MODE`, 화면의 '분석 방식', CLI·평가 스크립트의 `--mode`)
+- `auto`(기본): 정기 자동 리포트는 단일, 자연어 질문은 멀티 (`config/agents.yaml` 의 `routing`)
+- `single`: 분석 에이전트 1개 / `multi`: 정형·탐색 동시 실행 (GPT 호출 약 2배)
+- 비교: `python scripts/eval.py --mode single` vs `python scripts/eval.py --mode multi --baseline <single 결과>.json`
 
 ## 리포트 품질 판정 (LLM judge)
 분석 에이전트와 분리된 판사 LLM이 리포트를 채점합니다. 기준과 통과 점수는 `config/judge.yaml`에서 고칩니다.

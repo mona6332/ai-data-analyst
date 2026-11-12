@@ -52,6 +52,7 @@ def evaluate_case(case: dict, run: Callable[[dict], dict]) -> dict:
     return {
         "id": case["id"], "question": case["question"], "agenda": case.get("agenda"),
         "seconds": round(time.time() - t0, 1), "queries": len(res.get("sql_log") or []),
+        "mode": res.get("mode"), "agents": res.get("agents"),
         "first_score": history[0].get("overall") if history else j.get("overall"),
         "final_score": j.get("overall"), "judge_passed": j.get("passed"), "revisions": j.get("revision", 0),
         "scores": {s["key"]: s["score"] for s in j.get("scores", [])},

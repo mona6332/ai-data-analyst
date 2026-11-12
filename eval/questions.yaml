@@ -7,6 +7,7 @@
 #   agenda        : (선택) 아젠다 ID
 #   must_mention  : (선택) 리포트에 반드시 나와야 할 핵심 단어. 목록 안의 목록은 '그중 하나'
 #                   예) [META, [재구매, 리텐션]]  → META 와 (재구매 또는 리텐션) 이 모두 있어야 함
+#   mode          : (선택) single | multi — 이 질문만 다른 에이전트 모드로 실행
 
 thresholds:
   avg_score: 3.8        # 전체 평균 점수(1~5) 최소
